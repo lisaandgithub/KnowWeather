@@ -174,9 +174,9 @@ public class WeatherActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 String responseData = response.body().string();
+                System.out.println("得到的是"+responseData);
                 try {
                     final String bingPic = BingUrl  +  parseXMLWithPull.parseBingPicForUrl(responseData);
-                    System.out.println("lisa..."+bingPic);
                     SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
                     editor.putString("bing_pic",bingPic);
                     editor.apply();
