@@ -9,16 +9,21 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutCompat;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.administrator.knowweather.gson.Forecast;
 import com.example.administrator.knowweather.gson.Weather;
 import com.example.administrator.knowweather.util.HttpUtil;
 import com.example.administrator.knowweather.util.Utility;
+import com.example.administrator.knowweather.util.parseXMLWithPull;
 import com.google.gson.annotations.SerializedName;
+
+import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 
@@ -39,11 +44,13 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView comfortText;
     private TextView carWashText;
     private TextView sportText;
+    private ImageView bingPicImg;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_weather);
         //初始化各个控件
+        bingPicImg = (ImageView) findViewById(R.id.bing_pic_img);
         weatherLayout = (ScrollView) findViewById(R.id.weather_layout);
         titleCity = (TextView) findViewById(R.id.tv_title_city);
         titleUpdateTime = (TextView) findViewById(R.id.tv_title_updateTime);
@@ -67,6 +74,12 @@ public class WeatherActivity extends AppCompatActivity {
             String weatherId = getIntent().getStringExtra("weather_id");
             weatherLayout.setVisibility(View.INVISIBLE);
             requestWeather(weatherId);
+        }
+        String bingPic = preferences.getString("bing_pic",null);
+        if (bingPic != null) {
+            Glide.with(this).load(bingPic).into(bingPicImg);
+        }else {
+            loadBingPic();
         }
     }
 
@@ -114,7 +127,7 @@ public class WeatherActivity extends AppCompatActivity {
      */
     private void showWeatherInfo(Weather weather){
         String cityName = weather.basic.cityName;
-        String updateTime = weather.basic.update.updateTime.split("")[1];
+        String updateTime = weather.basic.update.updateTime.split(" ")[1];
         String degree = weather.now.temperature + "℃";
         String  weatherInfo = weather.now.more.info;
         titleCity.setText(cityName);
@@ -145,5 +158,39 @@ public class WeatherActivity extends AppCompatActivity {
         carWashText.setText(carWash);
         sportText.setText(sport);
         weatherLayout.setVisibility(View.VISIBLE);
+    }
+
+    //访问这个网址获取到bing 背景图片的xml文件
+    public static final String BingPicXmlUrl = "http://cn.bing.com/HPImageArchive.aspx?idx=0&n=1";
+    public static final String BingUrl = "http://cn.bing.com";
+    //解析得到的xml文件，得到每日一图的url
+    public void loadBingPic(){
+        HttpUtil.sendOKHttpRequest(BingPicXmlUrl, new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String responseData = response.body().string();
+                try {
+                    final String bingPic = BingUrl  +  parseXMLWithPull.parseBingPicForUrl(responseData);
+                    System.out.println("lisa..."+bingPic);
+                    SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
+                    editor.putString("bing_pic",bingPic);
+                    editor.apply();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Glide.with(WeatherActivity.this).load(bingPic).into(bingPicImg);
+                        }
+                    });
+                } catch (XmlPullParserException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        });
     }
 }
